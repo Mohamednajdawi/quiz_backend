@@ -8,7 +8,10 @@ from backend.sqlite_dal import Base
 # Use environment variable for database URL if available, otherwise use the default path
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    engine = create_engine(database_url, connect_args={"check_same_thread": False})
+    # Handle Heroku PostgreSQL URL format
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    engine = create_engine(database_url)
 else:
     # Get the absolute path to the database file
     db_path = os.path.abspath("quiz_database.db")

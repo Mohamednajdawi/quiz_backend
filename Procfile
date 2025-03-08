@@ -1,0 +1,1 @@
+web: gunicorn backend.api:app -k uvicorn.workers.UvicornWorker 
