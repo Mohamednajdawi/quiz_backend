@@ -189,6 +189,61 @@ git commit -m "Your commit message"
 git push heroku main
 ```
 
+### Pushing Updates to Heroku
+
+To update your application on Heroku after making changes:
+
+1. Make sure your changes are working locally:
+   ```bash
+   # Test your changes locally
+   uvicorn backend.api:app --reload
+   ```
+
+2. Commit your changes to your local Git repository:
+   ```bash
+   # Stage your changes
+   git add .
+   
+   # Commit your changes with a descriptive message
+   git commit -m "Description of the changes made"
+   ```
+
+3. Push your changes to Heroku:
+   ```bash
+   # Push to Heroku's main branch
+   git push heroku main
+   ```
+
+4. Verify your deployment:
+   ```bash
+   # Check the deployment logs
+   heroku logs --tail --app quiz-maker-api
+   
+   # Open the application in a browser
+   heroku open --app quiz-maker-api
+   ```
+
+5. If you've made database schema changes:
+   ```bash
+   # Run any necessary database migrations
+   heroku run python migrations.py --app quiz-maker-api
+   ```
+
+6. If you need to restart the application:
+   ```bash
+   # Restart the application dynos
+   heroku restart --app quiz-maker-api
+   ```
+
+7. Monitor your application for any issues:
+   ```bash
+   # Check application metrics
+   heroku ps --app quiz-maker-api
+   
+   # View recent logs
+   heroku logs --app quiz-maker-api
+   ```
+
 ### Viewing Logs
 
 To view application logs:
