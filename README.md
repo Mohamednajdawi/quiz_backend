@@ -48,6 +48,154 @@ The Dockerfile:
 - Runs the application as a non-root user for better security
 - Exposes port 8000 for the FastAPI application
 
+## Heroku Deployment
+
+Follow these steps to deploy the application to Heroku:
+
+### Prerequisites
+
+1. Install the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
+2. Login to Heroku:
+   ```bash
+   heroku login
+   ```
+
+### Deployment Steps
+
+1. Create a Heroku app:
+   ```bash
+   heroku create quiz-maker-api
+   ```
+
+2. Add a PostgreSQL database:
+   ```bash
+   heroku addons:create heroku-postgresql:essential-0 --app quiz-maker-api
+   ```
+
+3. Set up environment variables:
+   ```bash
+   heroku config:set GROQ_API_KEY=your_groq_api_key --app quiz-maker-api
+   ```
+
+4. Initialize a Git repository (if not already done):
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit for Heroku deployment"
+   ```
+
+5. Add Heroku as a remote and set it to use container-based deployment:
+   ```bash
+   heroku git:remote -a quiz-maker-api
+   heroku stack:set container --app quiz-maker-api
+   ```
+
+6. Push the code to Heroku:
+   ```bash
+   git push heroku main
+   ```
+
+7. Initialize the database:
+   ```bash
+   heroku run python init_db.py --app quiz-maker-api
+   ```
+
+8. Open the application:
+   ```bash
+   heroku open --app quiz-maker-api
+   ```
+
+### Starting and Stopping the App
+
+To stop the application (e.g., to save on dyno hours): *this one*
+```bash
+heroku ps:scale web=0 --app quiz-maker-api
+```
+
+To start the application again: *this one*
+```bash
+heroku ps:scale web=1 --app quiz-maker-api
+```
+
+You can also put the app in maintenance mode (which shows a maintenance page to users):
+```bash
+# Enable maintenance mode
+heroku maintenance:on --app quiz-maker-api
+
+# Disable maintenance mode
+heroku maintenance:off --app quiz-maker-api
+```
+
+### Managing Heroku Postgres Add-on
+
+#### Viewing Database Information
+```bash
+# List all add-ons including Postgres
+heroku addons --app quiz-maker-api
+
+# Get detailed information about your Postgres database
+heroku pg:info --app quiz-maker-api
+```
+
+#### Managing Postgres Costs
+Heroku doesn't provide a direct way to pause PostgreSQL databases. To manage costs when not using the database for extended periods:
+
+1. Create a backup of your database:
+   ```bash
+   # Create a backup
+   heroku pg:backups:capture --app quiz-maker-api
+   
+   # Download the backup (optional)
+   heroku pg:backups:download --app quiz-maker-api
+   ```
+
+2. Remove the Postgres add-on:
+   ```bash
+   heroku addons:destroy postgresql --app quiz-maker-api --confirm quiz-maker-api
+   ```
+
+3. When needed again, recreate the database:
+   ```bash
+   # Create a new Postgres database
+   heroku addons:create heroku-postgresql:essential-0 --app quiz-maker-api
+   
+   # Initialize the database tables
+   heroku run python init_db.py --app quiz-maker-api
+   ```
+
+4. Restore from backup (if needed):
+   ```bash
+   # If you have a backup URL
+   heroku pg:backups:restore [BACKUP_URL] --app quiz-maker-api
+   
+   # Or restore from the latest backup
+   heroku pg:backups:restore --app quiz-maker-api
+   ```
+
+### Important Files for Heroku Deployment
+
+- `requirements.txt`: Lists all Python dependencies
+- `Procfile`: Tells Heroku how to run the application
+- `runtime.txt`: Specifies the Python version
+- `heroku.yml`: Configuration for Docker-based deployment
+- `init_db.py`: Script to initialize the database tables
+
+### Making Changes
+
+After making changes to your code, commit and push to Heroku:
+```bash
+git add .
+git commit -m "Your commit message"
+git push heroku main
+```
+
+### Viewing Logs
+
+To view application logs:
+```bash
+heroku logs --tail --app quiz-maker-api
+```
+
 ## API Documentation
 
-When the application is running, visit `http://localhost:8000/docs` to view the interactive API documentation.
+When the application is running, visit `http://localhost:8000/docs` (local) or `https://quiz-maker-api.herokuapp.com/docs` (Heroku) to view the interactive API documentation.
