@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  quiz-app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./quiz_database.db:/app/quiz_database.db
+    environment:
+      - DATABASE_URL=sqlite:////app/quiz_database.db
+    restart: unless-stopped
+    command: ["uvicorn", "backend.api:app", "--host", "0.0.0.0", "--port", "8000"] 
