@@ -5,13 +5,15 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only requirements first to leverage Docker cache
-COPY pyproject.toml .
+# Copy requirements.txt first to leverage Docker cache
+COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
