@@ -38,6 +38,8 @@ class QuizTopic(Base):
     category = Column(String, nullable=False)
     subcategory = Column(String, nullable=False)
     creation_timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    # Add last attempt date to track when this topic was last attempted
+    last_attempt_date = Column(DateTime, nullable=True)
 
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
