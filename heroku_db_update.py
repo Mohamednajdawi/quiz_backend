@@ -7,7 +7,7 @@ Usage: heroku run python heroku_db_update.py --app quiz-maker-api
 import os
 import sys
 import datetime
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, ForeignKey, Float, Boolean, MetaData
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, ForeignKey, Float, Boolean, MetaData, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -78,6 +78,18 @@ class UserQuizResult(Base):
     completed = Column(Boolean, default=True)
     started_at = Column(DateTime, default=datetime.datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+    
+    # Enhanced date and time tracking
+    day_of_week = Column(String(10), nullable=True)
+    time_of_day = Column(String(20), nullable=True)
+    
+    # Enhanced quiz metrics
+    average_time_per_question = Column(Float, nullable=True)
+    difficulty_level = Column(String(20), nullable=True)
+    streak = Column(Integer, default=0)
+    
+    # Notes and context
+    quiz_context = Column(Text, nullable=True)
 
 class UserQuestionAnswer(Base):
     __tablename__ = "user_question_answers"
@@ -88,6 +100,9 @@ class UserQuestionAnswer(Base):
     user_answer = Column(String, nullable=True)
     is_correct = Column(Boolean, nullable=False)
     time_taken = Column(Integer, nullable=True)
+    
+    # Add confidence rating
+    confidence_level = Column(Integer, nullable=True)
 
 def main():
     """Create or update the database tables."""
