@@ -1,16 +1,10 @@
-import os
-import sys
-
-# Add the parent directory to the Python path to import backend modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from backend.sqlite_dal import Base
 from backend.db import engine
+from backend.sqlite_dal import Base
 
-def init_database():
-    # Create all tables defined in sqlite_dal.py
-    Base.metadata.create_all(engine)
-    print("Database initialized successfully!")
+def init_db():
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created successfully!")
 
 if __name__ == "__main__":
-    init_database() 
+    init_db() 
