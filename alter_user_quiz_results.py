@@ -1,9 +1,9 @@
 import os
 import sys
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 
 def main():
-    """Add missing columns to user_quiz_results table."""
+    """Add missing columns to user_quiz_results table and diagnose issues."""
     # Get the database URL from environment
     database_url = os.environ.get("DATABASE_URL")
     if database_url:
@@ -18,7 +18,58 @@ def main():
     
     # Connect to the database
     with engine.connect() as connection:
-        # Define the columns we need to add
+        # First, check the existing tables and structure
+        print("\n=== DATABASE DIAGNOSTIC INFO ===")
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        print(f"Tables in database: {tables}")
+        
+        # Check user_quiz_results table
+        if 'user_quiz_results' in tables:
+            print("\n=== USER_QUIZ_RESULTS TABLE ===")
+            columns = inspector.get_columns('user_quiz_results')
+            print("Columns:")
+            for column in columns:
+                print(f"  - {column['name']} ({column['type']})")
+            
+            # Check if there's any data in the table
+            try:
+                count_query = text("SELECT COUNT(*) FROM user_quiz_results")
+                result = connection.execute(count_query)
+                count = result.scalar()
+                print(f"\nTotal quiz results: {count}")
+                
+                if count > 0:
+                    # Check most recent entries
+                    recent_query = text("""
+                        SELECT * FROM user_quiz_results 
+                        ORDER BY id DESC 
+                        LIMIT 3
+                    """)
+                    result = connection.execute(recent_query)
+                    rows = result.fetchall()
+                    print("\nMost recent quiz results:")
+                    for row in rows:
+                        print(f"  - ID: {row.id}, User ID: {row.user_id}, Topic ID: {row.topic_id}, Score: {row.score}")
+                        
+                    # Check users
+                    user_query = text("""
+                        SELECT DISTINCT user_id 
+                        FROM user_quiz_results
+                        LIMIT 10
+                    """)
+                    result = connection.execute(user_query)
+                    users = result.fetchall()
+                    print("\nUsers with quiz results:")
+                    for user in users:
+                        print(f"  - User ID: {user.user_id}")
+            except Exception as e:
+                print(f"\nError querying data: {e}")
+        else:
+            print("\nWARNING: user_quiz_results table not found!")
+        
+        # Now continue with adding the columns
+        print("\n=== ADDING MISSING COLUMNS ===")
         columns_to_add = [
             {"name": "day_of_week", "type": "VARCHAR(10)"},
             {"name": "time_of_day", "type": "VARCHAR(20)"},
@@ -55,7 +106,41 @@ def main():
             else:
                 print(f"Column {column_name} already exists in user_quiz_results table.")
         
-        print("Database schema update completed!")
+        # Check for Firebase users
+        print("\n=== CHECKING FIREBASE USERS ===")
+        if 'users' in tables:
+            columns = inspector.get_columns('users')
+            print("Users table columns:")
+            for column in columns:
+                print(f"  - {column['name']} ({column['type']})")
+                
+            # Count users
+            try:
+                count_query = text("SELECT COUNT(*) FROM users")
+                result = connection.execute(count_query)
+                count = result.scalar()
+                print(f"\nTotal users: {count}")
+                
+                if count > 0:
+                    # List some users
+                    users_query = text("""
+                        SELECT * FROM users
+                        LIMIT 5
+                    """)
+                    result = connection.execute(users_query)
+                    rows = result.fetchall()
+                    print("\nSample users:")
+                    for row in rows:
+                        try:
+                            print(f"  - Firebase UID: {row.firebase_uid}, Username: {row.username if hasattr(row, 'username') else 'N/A'}")
+                        except:
+                            print(f"  - User info: {row}")
+            except Exception as e:
+                print(f"\nError querying users: {e}")
+        else:
+            print("Users table not found.")
+            
+        print("\nDatabase schema update completed!")
 
 if __name__ == "__main__":
     main() 
