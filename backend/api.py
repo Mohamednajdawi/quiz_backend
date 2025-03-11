@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from typing import Any, Dict, List, Optional
 import datetime
+from sqlalchemy import true
 
 from dotenv import load_dotenv
 
@@ -324,6 +325,14 @@ class UserQuizHistoryRequest(BaseModel):
     firebase_uid: str
 
 
+# New model for Firebase user profiles
+class FirebaseUserData(BaseModel):
+    user_id: str
+    display_name: Optional[str] = None
+    email: Optional[str] = None
+    photo_url: Optional[str] = None
+
+
 # User management endpoints
 @app.post("/user/profile")
 async def create_or_update_user_profile(
@@ -351,6 +360,43 @@ async def create_or_update_user_profile(
     
     return JSONResponse(
         content={"status": "success", "user_id": user.id},
+        status_code=200
+    )
+
+
+# New Firebase user management endpoint
+@app.post("/users")
+async def create_or_update_user(
+    user_data: FirebaseUserData, db: Session = Depends(get_db)
+) -> JSONResponse:
+    """Create or update a user profile with Firebase UID."""
+    firebase_uid = user_data.user_id
+    
+    if not firebase_uid:
+        raise HTTPException(status_code=400, detail="Firebase UID is required")
+    
+    # Check if user exists
+    user = db.query(UserProfile).filter(UserProfile.firebase_uid == firebase_uid).first()
+    
+    if user:
+        # Update existing user
+        user.username = user_data.display_name
+        user.email = user_data.email
+        # Add a last login timestamp field if needed
+    else:
+        # Create new user
+        user = UserProfile(
+            firebase_uid=firebase_uid,
+            username=user_data.display_name,
+            email=user_data.email,
+            created_at=datetime.datetime.now()
+        )
+        db.add(user)
+    
+    db.commit()
+    
+    return JSONResponse(
+        content={"message": "User profile updated successfully", "user_id": user.id},
         status_code=200
     )
 
@@ -537,15 +583,40 @@ async def submit_quiz_result(
 async def get_user_quiz_history(
     firebase_uid: str, db: Session = Depends(get_db)
 ) -> JSONResponse:
+    """Get quiz history for a user using their Firebase UID."""
     # Verify the user exists
     user = db.query(UserProfile).filter(UserProfile.firebase_uid == firebase_uid).first()
+    
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        # Create a temporary user if they don't exist
+        user = UserProfile(
+            firebase_uid=firebase_uid,
+            username="Temporary User",
+            created_at=datetime.datetime.now()
+        )
+        db.add(user)
+        db.commit()
+        
+        # Return empty history for new users
+        return JSONResponse(
+            content={
+                "status": "success",
+                "quiz_history": [],
+                "statistics": {
+                    "total_quizzes": 0,
+                    "average_score": 0,
+                    "quizzes_by_day": {},
+                    "quizzes_by_time": {},
+                    "quizzes_by_difficulty": {}
+                }
+            },
+            status_code=200
+        )
     
     # Get all completed quiz results for the user
     quiz_results = db.query(UserQuizResult).filter(
         UserQuizResult.user_id == user.id,
-        UserQuizResult.completed == True
+        UserQuizResult.completed == true()
     ).order_by(UserQuizResult.completed_at.desc()).all()
     
     results = []
@@ -558,15 +629,17 @@ async def get_user_quiz_history(
             "topic_name": topic.topic if topic else "Unknown",
             "category": topic.category if topic else "Unknown",
             "subcategory": topic.subcategory if topic else "Unknown",
-            "score": result.score,
+            "score": float(result.score),
             "correct_answers": result.correct_answers,
             "total_questions": result.total_questions,
             "time_taken": result.time_taken,
             "completed_at": result.completed_at.isoformat() if result.completed_at else None,
             "day_of_week": result.day_of_week,
             "time_of_day": result.time_of_day,
+            "average_time_per_question": float(result.average_time_per_question) if result.average_time_per_question else None,
             "difficulty_level": result.difficulty_level,
-            "average_time_per_question": result.average_time_per_question
+            "streak": result.streak,
+            "quiz_context": result.quiz_context
         })
     
     # Get statistics for the user
