@@ -736,3 +736,88 @@ async def get_quiz_result_details(
         },
         status_code=200
     )
+
+
+class TestQuizRequest(BaseModel):
+    firebase_uid: str
+    topic_id: int
+    topic_name: str
+    score: float
+    total_questions: int
+    correct_answers: int
+    time_taken: Optional[int] = None
+    completed: bool = True
+    day_of_week: Optional[str] = None
+    time_of_day: Optional[str] = None
+    average_time_per_question: Optional[float] = None
+    difficulty_level: Optional[str] = None
+    streak: Optional[int] = None
+    quiz_context: Optional[str] = None
+
+
+@app.post("/quiz-results")
+async def submit_test_quiz_result(
+    request: TestQuizRequest, db: Session = Depends(get_db)
+) -> JSONResponse:
+    """Create a test quiz result for debugging purposes"""
+    firebase_uid = request.firebase_uid
+    
+    if not firebase_uid:
+        raise HTTPException(status_code=400, detail="Firebase UID is required")
+    
+    # Verify the user exists or create if not
+    user = db.query(UserProfile).filter(UserProfile.firebase_uid == firebase_uid).first()
+    
+    if not user:
+        user = UserProfile(
+            firebase_uid=firebase_uid,
+            username="Test User",
+            created_at=datetime.datetime.now()
+        )
+        db.add(user)
+        db.commit()
+    
+    # Create a test topic if needed
+    topic = db.query(QuizTopic).filter(QuizTopic.id == request.topic_id).first()
+    if not topic:
+        topic = QuizTopic(
+            id=request.topic_id,
+            topic=request.topic_name,
+            category="Test Category",
+            subcategory="Test Subcategory"
+        )
+        db.add(topic)
+        db.commit()
+    
+    current_time = datetime.datetime.utcnow()
+    
+    # Create a test quiz result
+    quiz_result = UserQuizResult(
+        user_id=user.id,
+        topic_id=topic.id,
+        score=request.score,
+        total_questions=request.total_questions,
+        correct_answers=request.correct_answers,
+        time_taken=request.time_taken,
+        completed=request.completed,
+        started_at=current_time - datetime.timedelta(minutes=5),
+        completed_at=current_time,
+        day_of_week=request.day_of_week,
+        time_of_day=request.time_of_day,
+        average_time_per_question=request.average_time_per_question,
+        difficulty_level=request.difficulty_level,
+        streak=request.streak,
+        quiz_context=request.quiz_context
+    )
+    
+    db.add(quiz_result)
+    db.commit()
+    
+    return JSONResponse(
+        content={
+            "status": "success",
+            "message": "Test quiz result created successfully",
+            "quiz_result_id": quiz_result.id
+        },
+        status_code=201
+    )
